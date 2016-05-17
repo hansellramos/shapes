@@ -1,0 +1,197 @@
+<html>
+    <head>
+        <title>Shapes Test</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body{margin: 0;}
+            canvas{width: 100%; height: 100%;background: #eee;}
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas"></canvas>
+        <script>
+            var canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.addEventListener('mousedown',mouseDown, false);
+            
+            var create = false, drag = false, edit = false, remove = false;
+            var selectedShapeIndex = null;
+            var status = "";
+            
+            var removeButton, editButton;
+            
+            var ctx = canvas.getContext('2d');
+            
+            var shapes = [];
+            var originalShapes = [];
+            
+            function repaint(){
+                ctx.fillStyle = "#eeeeee";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#000000";
+                drawShapes(shapes);
+                drawPanel();
+            }
+            
+            function drawPanel(){
+                drawShapesPanel();
+                drawToolsPanel();
+            }
+            
+            function drawShapesPanel(){
+                ctx.font = "18px Arial";
+                ctx.fillText("Add", 10, 20);
+                originalShapes = [];
+                originalShapes.push({type:'square', x:10, y:30, width:30, height:20});
+                originalShapes.push({type:'circle', x:25, y:70, radius:15});
+                originalShapes.push({type:'triangle', x1:10, y1:110, x2:40, y2:110, x3:25, y3:90});
+                drawShapes(originalShapes);
+            }
+            
+            function drawToolsPanel(){
+                ctx.font = "18px Arial";
+                ctx.fillText("Tools", 10, 160);
+                var img = new Image();
+                img.src = _delete;
+                ctx.drawImage(img, 10, 170);
+                removeButton = {type:'square', x:10, y:170, width:50, height:50};
+                img = new Image();
+                img.src = _edit;
+                ctx.drawImage(img, 10, 220);
+                ctx.fillText(status, 10, canvas.height-20);
+            }
+            
+            function drawShapes(_shapes){
+                for(var i = 0;i<_shapes.length;i++){
+                    ctx.beginPath();
+                    if(_shapes[i].type == 'square'){
+                        ctx.rect(_shapes[i].x, _shapes[i].y, _shapes[i].width, _shapes[i].height);
+                    }else if(_shapes[i].type == 'circle'){
+                        ctx.arc(_shapes[i].x, _shapes[i].y, _shapes[i].radius, 0, Math.PI*2);
+                    }else if(_shapes[i].type == 'triangle'){
+                        ctx.moveTo(_shapes[i].x1, _shapes[i].y1);
+                        ctx.lineTo(_shapes[i].x2, _shapes[i].y2);
+                        ctx.lineTo(_shapes[i].x3, _shapes[i].y3);
+                        ctx.lineTo(_shapes[i].x1, _shapes[i].y1);
+                    }
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+            }
+            
+            function mouseDown(event){
+                console.log("down: "+event.clientX+","+event.clientY);
+                for(var i=0;i<originalShapes.length;i++){
+                    if(isClicked(originalShapes[i], event.clientX, event.clientY)){
+                        create = true;
+                        selectedShapeIndex = i;
+                        console.log("create: "+originalShapes[i].type);
+                    }
+                }
+                for(var i=0;i<shapes.length;i++){
+                    if(isClicked(shapes[i], event.clientX, event.clientY)){
+                        if(!remove){
+                            drag = true;
+                            selectedShapeIndex = i;
+                            console.log("moving "+shapes[i].type);
+                        }else{
+                            shapes[i].type = '';
+                        }
+                    }
+                }
+                if(create || drag){
+                    canvas.removeEventListener('mousedown',mouseDown, false);
+                    console.log("mouse down removed");
+                    window.addEventListener('mouseup', mouseUp, false);
+                    window.addEventListener('mousemove', mouseMove, false);
+                    console.log("mouse up/move added");
+                    status = "Move";
+                }else if(isClicked(removeButton, event.clientX, event.clientY)){
+                    remove = true;
+                    status = "Remove";
+                    console.log("Removing");
+                }
+                if(create){
+                    shapes.push(cloneShape(originalShapes[selectedShapeIndex]));
+                    create = false;
+                    drag = true;
+                    selectedShapeIndex = shapes.length-1;
+                    status = "Create";
+                }
+                
+                if (event.preventDefault) {
+                    event.preventDefault();
+                }else if (event.returnValue) {
+                    event.returnValue = false; //IE
+                } 
+                repaint();
+                return false;
+            }
+            
+            function mouseUp(event){
+                console.log("up");
+                if(create || drag){
+                    create = drag = false;
+                    window.removeEventListener('mouseup', mouseUp, false);
+                    window.removeEventListener('mousemove', mouseMove, false);
+                    console.log("mouse up/move removed");
+                }
+                console.log("mouse down added");
+                canvas.addEventListener('mousedown',mouseDown, false);
+            }
+            
+            function mouseMove(event){
+                if(drag){
+                    shapes[selectedShapeIndex].x = event.clientX;
+                    shapes[selectedShapeIndex].y = event.clientY;
+                }
+                repaint();
+            }
+            
+            function isClicked(_shape, mouseX, mouseY){
+                if(_shape.type=='square'){
+                    return isClickedSquare(_shape, mouseX, mouseY);
+                }else if(_shape.type=='circle'){
+                    return isClickedCircle(_shape, mouseX, mouseY);
+                } else if(_shape.type=='triangle'){
+                    return isClickedTriangle(_shape, mouseX, mouseY);
+                }else{
+                    return false;
+                }
+            }
+            
+            function isClickedSquare(_shape, mouseX, mouseY){
+                return mouseX > _shape.x && mouseX < _shape.x+_shape.width 
+                    && mouseY > _shape.y && mouseY < _shape.y+_shape.height; 
+            }
+            
+            function isClickedCircle(_shape, mouseX, mouseY){
+                return Math.pow(_shape.x - mouseX, 2) + Math.pow(_shape.y - mouseY, 2) 
+                        < Math.pow(_shape.radius,2);
+            }
+            
+            function isClickedTriangle(_shape, mouseX, mouseY){
+                return false;
+            }
+            
+            function cloneShape(_shape){
+                if(_shape.type=='square'){
+                    return {type:'square', x:_shape.x, y:_shape.y, width:_shape.width, height:_shape.height};
+                }else if(_shape.type=='circle'){
+                    return {type:'circle', x:_shape.x, y:_shape.y, radius:_shape.radius};
+                } else if(_shape.type=='triangle'){
+                    return {type:'triangle', x1:_shape.x1, y1:_shape.y1, x2:_shape.x2, y2:_shape.y2, x3:_shape.x3, y3:_shape.y3}
+                }else{
+                    return false;
+                }
+            }
+            
+            var _delete = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAEQklEQVRYR81Z3XHbMAwGeGmf89iLrNQjZIM2G7QbOCNkknQDJxO0G8Qb1CP4zlbSt+a5SYkeCFICKTL6SXupLnexJRL8BID4PtC4XL5bPj2ZFRgAsFC+DA9Ql00G8/P03jPm3CM1xxgDVs3n70S0w8Vi8RHA3vZsob9D6gnf898RwwBgQwDhmRqTtantAQDb4fnhP7Dd1h5tHEBEuuV5rW0ewFcYnH5WhuWRLJK7es9yLx7sBwwOIAO1AjB4kAh2iHAzFJn2eUiLEKqQBhNCnYaWCN4bgyviUJH2oKDeHPbN+WiA/2BgcJhPodiDiLjZ/ycA5d29B7tNQpvD4f7VPej2hMtpFWKHF+zmsH99gNphSZkZ9uByuTzml9ntdg9zUpDr7m73Y1eaG5e9iSFmcE9Pv1zNPDp6ez4VZFVVZxI++NY0dxc5kLMBKnBn3vB2CsgADgBcBBDxer9veiBnAdTgAoP4wjwKpANn4BaIHLjACIh4sd8319qTEUBMQ1yog6en1XdrKXgujozB7ZF5Uwy3gCNOi+NAk8wSwloECDFIDZDL3qhNUlUna0RYtcg0BTrOx63JgEzD2tKn1Dj3l3rRAURib0+rg1VdrZFIgQyxYjvUA9kLa2ZHPBti5+KJu7j1ZKs4RHkoQeBy8vHxccm71YU1hNMLAFnXzenlH7+DpjpKxcIYLtbh1kolfOZwW0tLASeRjBSNAM6C0wAlHYIH0d5KAg8Xah7VedLrQyehvI5Ssisnw0qeCxnQyr9eDjoBOp7q6rpak87JfI5FOnEIXOTBKAfVrpkiFko56QvxZHC9EKdqZo7cquvFVyL7qcjLrLatvWya+y9juLutg9qDQd5MBZirc1n5b2B7ZMZxd75QzwhxxxAo9OULry7mii2AkEGWGUdvkhfJLdnFokoC8QfjznuBz/I91CB3C5N0VWUU1encKYELHWC/i/NtZDAywN2z1Eyw3YaV4LhVNS66nk08+VtLHyLuDmWyK9pFTxa5WN7cFnuSyHOF5lzXOVeCDK6E9NXVzc2CbAHKFK9mBjZJDC4JmV87V4QZZNfjtgOFAQV4D2Sbgzyqx8UFqlvU1U8EOH7m9KDIreJJWHVasDs+8ZC/HQ53n1+0i+u6WhHRuldoB4i/y92MnpSy9ECE503TbCOAUiHGe5DHtiCVfBrDrUWQ0AfHY/O7eGSh1p6cAq4FWZ+skWAFiA9kIfJcz4NZRY002LgzSDaWNju98Bdu1HV1ZS3c6LDqoQWqm6YHx4KZM252TzJnsTlzXsQkcxacOqeTW06hp20nbAHM5VSjf3M8md9naPFKbPa6um6p4rGuLzNuuqaxpNOLQLt2Qvrg9ErXiTk+OQLmyXEHllT9pGF3i/l7IrVEOHSH3V0vpU8VIn7O2fRv4U4WhGetd2kw6A+fc5oODVd4MVEUDfwTQv43DcT4Wfpd20Q02z/Zj5VriD79awAAAABJRU5ErkJggg==';
+            var _edit = 'data:image/png;base64,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';
+            
+            repaint();
+        </script>
+    </body>
+</html>
