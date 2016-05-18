@@ -16,9 +16,11 @@
             canvas.height = window.innerHeight;
             canvas.addEventListener('mousedown',mouseDown, false);
             
-            var create = false, drag = false, edit = false, remove = false;
+            var create = false, drag = false, edit = false, remove = false, resize = false;
             var selectedShapeIndex = null;
             var status = "";
+            var cornerRadius = 5;
+            var ix = 0, iy = 0;
             
             var removeButton, editButton;
             
@@ -44,35 +46,37 @@
                 ctx.font = "18px Arial";
                 ctx.fillText("Add", 10, 20);
                 originalShapes = [];
-                originalShapes.push({type:'square', x:25, y:45, radius:15});
-                originalShapes.push({type:'circle', x:25, y:85, radius:15});
-                originalShapes.push({type:'triangle', x:25, y:125, radius:15});
+                originalShapes.push({type:'circle', x:25, y:40, radius:15});
+                originalShapes.push({type:'poligon', x:25, y:80, radius:15, sides:3});
+                originalShapes.push({type:'poligon', x:25, y:120, radius:15, sides:4});
+                originalShapes.push({type:'poligon', x:25, y:160, radius:15, sides:5});
+                originalShapes.push({type:'poligon', x:25, y:200, radius:15, sides:6});
+                originalShapes.push({type:'poligon', x:25, y:240, radius:15, sides:7});
+                originalShapes.push({type:'poligon', x:25, y:280, radius:15, sides:8});
                 drawShapes(originalShapes);
             }
             
             function drawToolsPanel(){
                 ctx.font = "18px Arial";
-                ctx.fillText("Tools", 10, 160);
+                ctx.fillText("Tools", 10, canvas.height-150);
                 var img = new Image();
                 img.src = _delete;
-                ctx.drawImage(img, 10, 170);
-                removeButton = {type:'square', x:10, y:170, radius:25};
+                ctx.drawImage(img, 10, canvas.height-140);
+                removeButton = {type:'poligon', x:10+25, y:canvas.height-140+25, radius:25, sides:4};
                 img = new Image();
                 img.src = _edit;
-                ctx.drawImage(img, 10, 220);
-                editButton = {type:'square', x:10, y:220, radius:25};
+                ctx.drawImage(img, 10, canvas.height-90);
+                editButton = {type:'poligon', x:10+25, y:canvas.height-90+25, radius:25, sides:4};
                 ctx.fillText(status, 10, canvas.height-20);
             }
             
             function drawShapes(_shapes){
                 for(var i = 0;i<_shapes.length;i++){
                     ctx.beginPath();
-                    if(_shapes[i].type == 'square'){
-                        drawPoligon(_shapes[i].x, _shapes[i].y, _shapes[i].radius, 4);
-                    }else if(_shapes[i].type == 'circle'){
+                    if(_shapes[i].type == 'circle'){
                         ctx.arc(_shapes[i].x, _shapes[i].y, _shapes[i].radius, 0, Math.PI*2);
-                    }else if(_shapes[i].type == 'triangle'){
-                        drawPoligon(_shapes[i].x, _shapes[i].y, _shapes[i].radius, 3);
+                    }else if(_shapes[i].type != ''){
+                        drawPoligon(_shapes[i].x, _shapes[i].y, _shapes[i].radius, _shapes[i].sides);
                     }
                     ctx.stroke();
                     ctx.closePath();
@@ -82,23 +86,36 @@
             function drawPoligon(cx, cy, radius, totalPieces){
                 var currentAngle=Math.PI/2*3;
                 var angle = Math.PI/totalPieces*2;
-                var endAngle = (Math.PI/totalPieces*2)*totalPieces;
+                var x = cx;
+                var y = cy;
+                var corners = getPoligonCorners(cx, cy, radius, totalPieces);
+
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                for(var i = 1; i< corners.length; i++){
+                    ctx.lineTo(corners[i].x, corners[i].y);
+                }
+                ctx.lineTo(corners[0].x, corners[0].y);
+
+                //stroke pieces
+                    ctx.stroke();
+            }
+
+            function getPoligonCorners(cx, cy, radius, totalPieces){
+                var corners = [];
+                var ajust = Math.PI/totalPieces;
+                var currentAngle = Math.PI/2*3;
+                var angle = Math.PI/totalPieces*2;
                 var x = cx;
                 var y = cy;
 
-                ctx.beginPath();
-                ctx.moveTo(cx, cy-radius);
-
-                //stroke pieces
                 for(i=0; i<totalPieces;i++){
-                    if(i<=totalPieces) {
-                        currentAngle += angle;
-                        x = cx + Math.cos(currentAngle) * radius;
-                        y = cy + Math.sin(currentAngle) * radius;
-                        ctx.lineTo(x, y);
-                        ctx.stroke();
-                    }
+                    currentAngle += angle;
+                    x = cx + Math.cos(currentAngle-ajust) * radius;
+                    y = cy + Math.sin(currentAngle-ajust) * radius;
+                    corners.push({x:x, y:y});
                 }
+                return corners;
             }
             
             function mouseDown(event){
@@ -110,20 +127,30 @@
                         console.log("create: "+originalShapes[i].type+" "+selectedShapeIndex);
                     }
                 }
-                for(var i=0;i<shapes.length;i++){
-                    if(isClicked(shapes[i], event.clientX, event.clientY)){
-                        if(remove){
-                            shapes[i].type = '';
-                        }else if(edit){
-
-                        }else{
-                            drag = true;
+                if(edit){
+                    for (var i = 0; i < shapes.length; i++) {
+                        if (isClickedInCorner(shapes[i], event.clientX, event.clientY)) {
+                            resize = true;
                             selectedShapeIndex = i;
-                            console.log("moving "+shapes[i].type);
+                            console.log("resizing " + shapes[i].type);
+                            ix = event.clientX;
+                            iy = event.clientY;
+                        }
+                    }
+                }else {
+                    for (var i = 0; i < shapes.length; i++) {
+                        if (isClicked(shapes[i], event.clientX, event.clientY)) {
+                            if (remove) {
+                                shapes[i].type = '';
+                            } else {
+                                drag = true;
+                                selectedShapeIndex = i;
+                                console.log("moving " + shapes[i].type);
+                            }
                         }
                     }
                 }
-                if(create || drag){
+                if(create || drag || resize){
                     canvas.removeEventListener('mousedown',mouseDown, false);
                     console.log("mouse down removed");
                     window.addEventListener('mouseup', mouseUp, false);
@@ -137,7 +164,7 @@
                     console.log("Removing");
                 }else if(isClicked(editButton, event.clientX, event.clientY)){
                     edit = true;
-                    status = "Edit";
+                    status = "Resize";
                     console.log("Edit");
                 }
                 if(create){
@@ -145,7 +172,9 @@
                     create = false;
                     drag = true;
                     selectedShapeIndex = shapes.length-1;
-                    status = "Create";
+                    status = "";
+                }else if(resize){
+                    status = "Resize";
                 }
                 
                 if (event.preventDefault) {
@@ -159,20 +188,26 @@
             
             function mouseUp(event){
                 console.log("up");
-                if(create || drag){
-                    create = drag = false;
+                if(create || drag || resize){
+                    create = drag = resize = false;
+                    ix = iy = 0;
                     window.removeEventListener('mouseup', mouseUp, false);
                     window.removeEventListener('mousemove', mouseMove, false);
                     console.log("mouse up/move removed");
+                    status = "";
                 }
                 console.log("mouse down added");
                 canvas.addEventListener('mousedown',mouseDown, false);
+                repaint();
             }
             
             function mouseMove(event){
                 if(drag){
                     shapes[selectedShapeIndex].x = event.clientX;
                     shapes[selectedShapeIndex].y = event.clientY;
+                }
+                if(resize){
+                    shapes[selectedShapeIndex].radius = Math.sqrt(Math.pow(event.clientX-ix,2)+Math.pow(event.clientY-iy,2));
                 }
                 repaint();
             }
@@ -181,41 +216,23 @@
                 return Math.pow(_shape.x - mouseX, 2) + Math.pow(_shape.y - mouseY, 2)
                         < Math.pow(_shape.radius,2);
             }
-            
+
+            function isClickedInCorner(_shape, mouseX, mouseY){
+                var corners = getPoligonCorners(_shape.x, _shape.y, _shape.radius, _shape.type == 'circle' ?360:_shape.sides);
+                for(var i = 0; i< corners.length;i++){
+                    if(isClicked({x:corners[i].x, y:corners[i].y, radius:cornerRadius}, mouseX, mouseY)){
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             function cloneShape(_shape){
-                return {type:_shape.type, x:_shape.x, y:_shape.y, radius:_shape.radius};
-            }
-
-            function mayor(numbers){
-                if(numbers.length<=0){
-                    return false;
-                }else{
-                    var mayor = numbers[0];
-                    for(var i = 1; i < numbers.length;i++){
-                        if(numbers[i]>mayor){
-                            mayor = numbers[i];
-                        }
-                    }
-                    return mayor;
-                }
-            }
-
-            function minor(numbers){
-                if(numbers.length<=0){
-                    return false;
-                }else{
-                    var minor = numbers[0];
-                    for(var i = 1; i < numbers.length;i++){
-                        if(numbers[i]<minor){
-                            minor = numbers[i];
-                        }
-                    }
-                    return minor;
-                }
+                return {type:_shape.type, x:_shape.x, y:_shape.y, radius:_shape.radius, sides:_shape.sides};
             }
             
-            var _delete = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAEQklEQVRYR81Z3XHbMAwGeGmf89iLrNQjZIM2G7QbOCNkknQDJxO0G8Qb1CP4zlbSt+a5SYkeCFICKTL6SXupLnexJRL8BID4PtC4XL5bPj2ZFRgAsFC+DA9Ql00G8/P03jPm3CM1xxgDVs3n70S0w8Vi8RHA3vZsob9D6gnf898RwwBgQwDhmRqTtantAQDb4fnhP7Dd1h5tHEBEuuV5rW0ewFcYnH5WhuWRLJK7es9yLx7sBwwOIAO1AjB4kAh2iHAzFJn2eUiLEKqQBhNCnYaWCN4bgyviUJH2oKDeHPbN+WiA/2BgcJhPodiDiLjZ/ycA5d29B7tNQpvD4f7VPej2hMtpFWKHF+zmsH99gNphSZkZ9uByuTzml9ntdg9zUpDr7m73Y1eaG5e9iSFmcE9Pv1zNPDp6ez4VZFVVZxI++NY0dxc5kLMBKnBn3vB2CsgADgBcBBDxer9veiBnAdTgAoP4wjwKpANn4BaIHLjACIh4sd8319qTEUBMQ1yog6en1XdrKXgujozB7ZF5Uwy3gCNOi+NAk8wSwloECDFIDZDL3qhNUlUna0RYtcg0BTrOx63JgEzD2tKn1Dj3l3rRAURib0+rg1VdrZFIgQyxYjvUA9kLa2ZHPBti5+KJu7j1ZKs4RHkoQeBy8vHxccm71YU1hNMLAFnXzenlH7+DpjpKxcIYLtbh1kolfOZwW0tLASeRjBSNAM6C0wAlHYIH0d5KAg8Xah7VedLrQyehvI5Ssisnw0qeCxnQyr9eDjoBOp7q6rpak87JfI5FOnEIXOTBKAfVrpkiFko56QvxZHC9EKdqZo7cquvFVyL7qcjLrLatvWya+y9juLutg9qDQd5MBZirc1n5b2B7ZMZxd75QzwhxxxAo9OULry7mii2AkEGWGUdvkhfJLdnFokoC8QfjznuBz/I91CB3C5N0VWUU1encKYELHWC/i/NtZDAywN2z1Eyw3YaV4LhVNS66nk08+VtLHyLuDmWyK9pFTxa5WN7cFnuSyHOF5lzXOVeCDK6E9NXVzc2CbAHKFK9mBjZJDC4JmV87V4QZZNfjtgOFAQV4D2Sbgzyqx8UFqlvU1U8EOH7m9KDIreJJWHVasDs+8ZC/HQ53n1+0i+u6WhHRuldoB4i/y92MnpSy9ECE503TbCOAUiHGe5DHtiCVfBrDrUWQ0AfHY/O7eGSh1p6cAq4FWZ+skWAFiA9kIfJcz4NZRY002LgzSDaWNju98Bdu1HV1ZS3c6LDqoQWqm6YHx4KZM252TzJnsTlzXsQkcxacOqeTW06hp20nbAHM5VSjf3M8md9naPFKbPa6um6p4rGuLzNuuqaxpNOLQLt2Qvrg9ErXiTk+OQLmyXEHllT9pGF3i/l7IrVEOHSH3V0vpU8VIn7O2fRv4U4WhGetd2kw6A+fc5oODVd4MVEUDfwTQv43DcT4Wfpd20Q02z/Zj5VriD79awAAAABJRU5ErkJggg==';
-            var _edit = 'data:image/png;base64,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';
+            var _delete = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAC00lEQVRoQ+2aSYgTQRSGpxNGgwt4cEFFhQFBCahZQDEHES8iCHpwOSh6cwMPHlQET8KgHjwIynhz0IPLQUEYvIh4iChkUSEoCAMqKi4HwYWopONXcXoom+6qpCvpIFRDkeq896r+/72Xfq+74wwYHrlcbprjOEebzeYullrMGNQs+Rv5a2yuYnO2XC7/MIHgmBgDfjb2TxgLI67zFrtVkPgc0X7AiEA2mx3Bk/uibi7siMKlSqWyP+oakQkUCoWZ9Xr9CxsnpM0/MH/FcEMACd0ljHmS3E2lUrOKxeLXKCQiE8D7K/D+U2nT+6TCBuFUDRCH1LuHznpPjyisJArPukogk8ksAOB2Ripk4WV8v0cC8RDdO+2AAPBmdNdKuqPMXwTZoltn3KhWq++C5IEREOATicQ4BlPbARSDzk/XdYeCSPxDgNBmAXMYxkt9HooBo3oLMIkIv0TrPKla8bT9BLYguNV3tGoAWyFw2xLoY5SUERhsNBrT+whOu3UymfxOCol2pHUo64DocyA0RbtqDxUA/EvVL+kIXJav9T3EqVp6FAJ7wxQsgRiiYiMw2e/E4O2gLXoWgTfsdtHbkVK/kVK/TkJwjvmnifM5fB6RdB+ge1fSPch8UYiDekbgMVeHNd6mXHJPMz8mgViOvNVhIhOd63NJdgbZccn2EfPVloDfA3hOVQdsBGwK4QGTSmxTyKaQTSFbyP7+Cqg3thIHtiG2EttmrpUYtp0OuyOzrYRtJWwr8Z+3EuM8iTjl5TFPGbYx3yRVxBPI34tzZPP5GJZkY8huSrYnmQ/FfVMfsl/Xv45eB7rxHtiUju49su6WUjxwumAKwtD+EM+QJh+g+ddSEgh4F2yIpXNz3Ttk7YvuPqfRCN4/oKKtJZBOp2fwV4DrvitM567s3GKMvzLsqNVq34wIeMb5fH434dzJeZ4xt3M8bVl8RKvEZfdaqVS60o7FHySElU+cFF4FAAAAAElFTkSuQmCC';
+            var _edit = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAFbklEQVRoQ+2aa2hcRRTHc7Mr2cimX2yh1oKJa0ENlLxTTa2rH2y1WNtqoBWt+PigbaH1EW2x1WoLPuKjtY8gSIqKBElMU6WUBNSgxDTmaSBFKZv1BX5Qv5hANprd9XfinWV6c+9m0+5NspCBy50599yZ/39mzsyZc69RVlZ2VzwefzMrK+smrij5M4FAYHNjY2OU8mRCpwL5EbKrlIw7onjn+Pj42qGhoVElLyoqWuHxeI5RvlPTlewg17re3t7flby4uHgZukepZyOybE1/ODs7e0N3d/eQkhUWFvpzc3PfRfdBZFdwhQ3D2GGUlpYOUyjQG+PBwz09PR8qGTqN5O+3AFLFlwD1iqZ7mPwuO10ar+/r63tM032GvHTelITuWXTvVg/oxPuQNVkUzwuBuPVtFNfw8jdaQyfIP2nXEGS3QfYjTXcf+YMOZPdC9jUN1Dba+sBB9wS6OzTdILpfUjYu6mwI/GMOiciHAfQUgD4nnyBWVVWVF4lEDiALqJfRkynW4vf7G9rb2yeUPBgMekdGRvZTXqk1JnW15eXlnUQ3ogMoKSmpoa6bkelTqNPr9dZ1dXX9resyCo9C4gVk15nyqIGwHuEjApiKHgd8vUOPzAsxeDeA97SA4f6ZYRrHWsp/Ab59XqBMDsJg1FZj5AWkjy+aTxkAfgrE+UZAFpWlsVgsn+U1nylyTTQabRoYGPjJqXNnnQAAF8tiALh8bE5AFsgdmVzXcvksYGtYjWyXWtEzysvLC2FZSyVhLH+v1fLTOa0qKysXTUxM/Eqdi1KtF1wPYJsNSt9cEV+nvIRntTJkIW1Z2gNbeehaor3VVH6Wy59KI0ynW/r7+zuVLu+/Rf5ps3zOupGdhoBs666mGZJYprsfvNsCuHsVwDkhII2nSCIC+CtRT2yq84aAkKioqNgkqwxZfRfWR/9HCNygC+wIiEugKjjFC5tdnT9m5Rj0cgz6K4rXJ2mvFTzr9OfsxJ+ycimMcXElEgIePIcTV+s2AQfwMetIgOc98DxhIfAQ8klPmfu3hvjkbMtbWZL+0F1ot0g4gA+xcdUwnQSYvjpNWRXFWRwdHd0q+wcO5tuzupE5gWf/CbL//GY1bEBuYQQ+SdaZs0bACTyjfzsnL9ncJpOFxCpsoGvOCTiAl2NjUAdvIXGGcgACfyYlAOOrGapD2MAFDhyHrQeOy7WFmYJX7YnbYefWmAemPegtxmaOy0b2PQU5PUnaDuO6ywWtgbBbKh17PpV2wfsyei+aum3WnbgFAptSqWg6nUvt+enqhcApdBLujiuuhFvgTSN31xdyAB/GYG+zM9jpetz6PKkvhCF/gUHvnGmlSp/3l5KXIIEeZwojCzI1f7nUevX37KaQRL8kKudGSit4cwpJfEriVJIGxQZknb3KBfQ/U+eadPW8wscy6iPutJtRXsGI77ONzKWJzB2AF2/T1eQmgRsh8IOr6Kl8gUCSHnZtBDjDSFB4CQf+howbATMY/IZ0HEbcnHEEWDWbwa7cnVgmEkjqSqRz0XDFBqYLqywQ0HrArRF4njbUZ6rhjLMBM0D8qjiMEsnIOALWOb5AYC52Yr3NjBwBXImgHAHGxsZaM46A+a34/f89CeOkawTM46n6h0Li+4PEnQ5aP4pLnJNnG1lVPNrUCPl8vgMdHR0jmkwC0feg9w4y9aH7X9cIONjGfs4Ih9QzACUizTb6dehuV3KcuFvplK/tViH59J+Tzi04SV1HALVbPcctkACVBKrsUhO61RpZu/8qwjIC8l+DVORNEwn5nUY+miy31NdGKHAn33wvKLn8JZCTk9Nq/iuhB5rPIdtFuP87pVtdXe0JhULNyNcjk+l2nvyz/wHL/tn2JBoyYwAAAABJRU5ErkJggg==';
             
             repaint();
         </script>
