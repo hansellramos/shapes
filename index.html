@@ -26,7 +26,7 @@
             
             var ctx = canvas.getContext('2d');
             
-            var shapes = [];
+            var shapes = localStorage.shapes ? JSON.parse(localStorage.shapes) : [];
             var originalShapes = [];
             
             function repaint(){
@@ -35,6 +35,7 @@
                 ctx.fillStyle = "#000000";
                 drawShapes(shapes);
                 drawPanel();
+                localStorage.shapes = JSON.stringify(shapes);
             }
             
             function drawPanel(){
